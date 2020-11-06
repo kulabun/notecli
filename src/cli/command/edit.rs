@@ -1,5 +1,7 @@
 use std::env::var;
-use std::process::Command;
+use std::error;
+use std::process;
+use super::command;
 
 use clap::Clap;
 
@@ -11,25 +13,22 @@ pub struct Edit {
     //TODO: add editor property
 }
 
-impl Edit {
-    pub fn execute(&self) {
+impl command::Command for Edit {
+    fn execute(&self) -> Result<(), Box<dyn error::Error>> {
         let note_name = &self.path;
 
         let nm = NoteManager::new();
-
-        if nm.is_name_correct(note_name) {
-            panic!("Incorrect note name format!");
-        }
-
-        nm.touch_note(note_name);
+        nm.touch_note(note_name)?;
 
         let path_to_note = nm.path_to_note(note_name);
         let editor = var("EDITOR").unwrap_or("vim".to_string());
-        Command::new(&editor)
+        process::Command::new(&editor)
             .arg(path_to_note)
             .spawn()
             .expect(format!("Failed to spawn {}", editor).as_str())
             .wait()
             .unwrap_or_else(|_| panic!(format!("{} exit abnormally", editor)));
+
+        Ok(())
     }
 }

@@ -3,7 +3,6 @@ use std::fs::{create_dir_all, File, remove_file};
 use std::path::PathBuf;
 
 use assert_cmd::Command;
-use regex::Regex;
 use tempfile::tempdir;
 
 pub struct Cli {

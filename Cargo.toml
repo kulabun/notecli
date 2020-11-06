@@ -13,12 +13,27 @@ clap = { version = "3.0.0-beta.2", features = ["derive", "suggestions", "color"]
 clap_generate = "3.0.0-beta.2"
 dirs = "3.0.1"
 walkdir = "2.3.1"
+regex = "1.4.2"
+#slog = { version = "2.0.0-2.1" , features = ["max_level_trace", "release_max_level_warn"] }
+#slog-term = "2.4.2"
+#slog-async = "2.0.0-2.0"
+#serde = { version = "1.0", features = ["derive"] }
+#serde_json = "1.0"
+#failure = "0.1.6"
+#failure_derive = "0.1.6"
+#clap = { features = ["yaml"] }
+#sled = "0.30.3"
+#rand = "0.7.3"
 
 [dev-dependencies]
 assert_cmd = "1.0.1"
 tempfile = "3.1.0"
 predicates = "1.0.5"
-regex = "1.4.1"
+#criterion = "0.3.1"
+#crossbeam-utils = "0.6.5"
+#rand = "0.7.3"
+#walkdir = "2.2.7"
+#panic-control = "0.1.4"
 
 [profile.dev]
 opt-level = 0

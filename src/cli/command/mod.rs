@@ -6,6 +6,7 @@ pub use self::{
     list::List,
     search::Search,
     show::Show,
+    command::Command,
 };
 
 mod completion;
@@ -15,3 +16,4 @@ mod show;
 mod list;
 mod search;
 mod delete;
+mod command;

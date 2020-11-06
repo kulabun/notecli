@@ -1,7 +1,10 @@
-use std::fs::{create_dir_all, File, remove_dir, remove_file};
+use std::fs::{self, File};
 use std::path::PathBuf;
+use regex::Regex;
 
-use walkdir::{DirEntry, WalkDir};
+use walkdir::WalkDir;
+use std::error;
+use core::fmt;
 
 const NOTE_FILE_NAME: &str = "@note";
 
@@ -9,6 +12,29 @@ pub struct NoteManager {
     note_file_name: String,
     notes_root: PathBuf,
 }
+
+#[derive(Debug)]
+struct NoteCliError {
+    message: &'static str
+}
+
+impl fmt::Display for NoteCliError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.message)
+    }
+}
+
+impl NoteCliError {
+    fn new(message: &'static str) -> NoteCliError {
+        NoteCliError {
+            message
+        }
+    }
+}
+
+impl error::Error for NoteCliError {}
+
+type Result<T> = std::result::Result<T, Box<dyn error::Error>>;
 
 impl NoteManager {
     pub fn new() -> NoteManager {
@@ -18,46 +44,78 @@ impl NoteManager {
         };
     }
 
-    pub fn is_name_correct(&self, note_name: &str) -> bool {
-        return note_name.matches("^[a-zA-Z0-9][a-zA-Z0-9\\-_\\.@]+(/[a-zA-Z0-9][a-zA-Z0-9\\-_\\.@]+)*&").next().is_some();
+    pub fn verify_name_format(&self, note_name: &str) -> Result<()> {
+        let first_char_pattern = regex::Regex::new("^([a-zA-Z0-9][^/]*)(/[a-zA-Z0-9][^/]*)*$")?;
+        if !first_char_pattern.is_match(note_name) {
+            return Err(Box::new(NoteCliError::new("Note name elements must start with alphanumeric character!")));
+        }
+
+        let name_characters = regex::Regex::new("^[a-zA-Z0-9][a-zA-Z0-9\\-_\\.@#]*(/[a-zA-Z0-9][a-zA-Z0-9\\-_\\.@#]*)*$")?;
+        if !name_characters.is_match(note_name) {
+            return Err(Box::new(NoteCliError::new("Note name elements are allowed to contain only following symbols: '-', '_', '@', '.', '#'")));
+        }
+
+        Ok(())
+    }
+
+    pub fn verify_note_exists(&self, note_name: &str) -> Result<()> {
+        if self.note_exists(note_name) {
+            Ok(())
+        } else {
+            Err(Box::new(NoteCliError::new("Note")))
+        }
     }
 
     pub fn note_exists(&self, note_name: &str) -> bool {
         return self.path_to_note(note_name).exists();
     }
 
-    pub fn touch_note(&self, note_name: &str) {
-        let note_file = self.path_to_note(note_name);
-        if note_file.exists() {
-            return;
+    pub fn touch_note(&self, note_name: &str) -> Result<()> {
+        self.verify_name_format(note_name)?;
+
+        if !self.note_exists(note_name) {
+            self.create_note(note_name)?;
         }
 
-        create_dir_all(note_file.parent().unwrap())
-            .unwrap_or_else(|_| panic!("Failed to create note directory"));
-
-        File::create(note_file)
-            .unwrap_or_else(|_| panic!("Failed to create note file"));
+        Ok(())
     }
 
-    pub fn delete_note(&self, note_name: &str) {
+    pub fn create_note(&self, note_name: &str) -> Result<()> {
+        self.verify_name_format(note_name)?;
+        if self.note_exists(note_name) {
+            return Err(Box::new(NoteCliError::new("Note already exists!")));
+        };
+
+        let note_file = self.path_to_note(note_name);
+        let parent = self.get_parent(&note_file)?;
+        fs::create_dir_all(parent)?;
+        File::create(note_file.as_path())?;
+
+        Ok(())
+    }
+
+    fn get_parent(&self, child: &PathBuf) -> Result<PathBuf> {
+        let parent_path = child.parent()
+            .ok_or(NoteCliError::new("Failed to resolve note's parent directory"))?
+            .to_path_buf();
+
+        Ok(parent_path)
+    }
+
+    pub fn delete_note(&self, note_name: &str) -> Result<()> {
+        self.verify_note_exists(note_name);
+
         let note_path = self.path_to_note(note_name);
-        if !note_path.exists() {
-            panic!("Note not found!")
+
+        fs::remove_file(note_path.as_path())?;
+
+        let mut parent = self.get_parent(&note_path)?;
+        while parent != self.notes_root && parent.read_dir()?.next().is_none() {
+            fs::remove_dir(parent.as_path())?;
+            parent = self.get_parent(&parent)?;
         }
 
-        remove_file(note_path.as_path())
-            .unwrap_or_else(|_| panic!("Failed to delete note file"));
-
-        fn is_empty_folder(folder: &PathBuf) -> bool {
-            folder.read_dir().unwrap().next().is_none()
-        }
-
-        let mut parent = note_path.parent().unwrap().to_path_buf();
-        while parent != self.notes_root && is_empty_folder(&mut parent) {
-            remove_dir(parent.as_path())
-                .unwrap_or_else(|_| panic!("Failed to delete note directory"));
-            parent = parent.parent().unwrap().to_path_buf();
-        }
+        Ok(())
     }
 
     pub fn path_to_note(&self, note_name: &str) -> PathBuf {
@@ -68,7 +126,7 @@ impl NoteManager {
         return path;
     }
 
-    pub fn list_notes(&self, maybe_prefix: Option<String>) {
+    pub fn list_notes(&self, maybe_prefix: Option<String>) -> Result<()> {
         let root = match maybe_prefix {
             Some(p) => self.notes_root.as_path().join(p),
             None => self.notes_root.to_path_buf(),
@@ -89,6 +147,8 @@ impl NoteManager {
                 .replace("\\", "/");
             println!("{}", note_name);
         }
+
+        Ok(())
     }
 
     pub fn search_notes(&self) {}

@@ -9,6 +9,7 @@ use super::command::Show;
 use super::command::List;
 use super::command::Search;
 use super::command::Delete;
+use super::command::Command;
 
 #[derive(Clap)]
 #[clap(
@@ -44,6 +45,20 @@ pub enum SubCommand {
 
     #[clap(about = "Generate shell auto-complete rules")]
     Completion(Completion),
+}
+
+impl SubCommand {
+    pub fn execute(&self) {
+        match self {
+            SubCommand::Completion(t) => t.run(),
+            SubCommand::Create(t) => t.run(),
+            SubCommand::Edit(t) => t.run(),
+            SubCommand::Show(t) => t.run(),
+            SubCommand::Delete(t) => t.run(),
+            SubCommand::List(t) => t.run(),
+            SubCommand::Search(t) => t.run(),
+        };
+    }
 }
 
 impl CommandLineInput {

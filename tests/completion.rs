@@ -1,4 +1,3 @@
-use assert_cmd::Command;
 use predicates::str::contains;
 
 use cli::Cli;
@@ -52,20 +51,3 @@ fn test_completion_zsh() {
         .success();
 }
 
-#[test]
-fn test_completion_powershell() {
-    let cli = Cli::new();
-    cli.cmd(&["completion", "powershell"])
-        .assert()
-        .stdout(contains("[CompletionResult]::new("))
-        .success();
-}
-
-#[test]
-fn test_completion_elvish() {
-    let cli = Cli::new();
-    cli.cmd(&["completion", "elvish"])
-        .assert()
-        .stdout(contains("&'notecli;completion'= {"))
-        .success();
-}
